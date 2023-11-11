@@ -1,0 +1,89 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: "MyCloud9Environment"
+    Description: "Name for the Cloud9 environment"
+Resources:
+  MyVPC: # VPCの作成
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: "10.0.0.0/16"
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Ref EnvironmentName
+
+  MySubnet: # サブネットの作成
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      CidrBlock: "10.0.0.0/24"
+      AvailabilityZone: !Select [ 0, !GetAZs ]
+      Tags:
+        - Key: Name
+          Value: !Ref EnvironmentName
+    
+  MyVPCIGW: # Internet Gatewayの作成
+    Type: AWS::EC2::InternetGateway
+    Properties: 
+      Tags:
+        - Key: Name
+          Value: !Ref EnvironmentName
+  
+  MyVPCIGWAttach: # VPCとInternet Gatewayの関連付け
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties: 
+      InternetGatewayId: !Ref MyVPCIGW
+      VpcId: !Ref MyVPC
+  
+  Cloud9RouteTable: # Cloud9用のルートテーブルの作成
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MyVPC
+      Tags:
+        - Key: Name
+          Value: Cloud9EnvironmentRoute
+
+  PublicRoute: # パブリックルートの設定
+    Type: AWS::EC2::Route
+    DependsOn: MyVPCIGW
+    Properties:
+      RouteTableId: !Ref Cloud9RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref MyVPCIGW
+
+  SubnetRouteAssociation: # サブネットとルートテーブルの関連付け
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref MySubnet
+      RouteTableId: !Ref Cloud9RouteTable
+
+  MyCloud9Environment: # Cloud9環境の作成
+    Type: AWS::Cloud9::EnvironmentEC2
+    Properties:
+      Name: !Ref EnvironmentName
+      Description: "My Cloud9 Environment"
+      InstanceType: "t2.micro"
+      SubnetId: !Ref MySubnet
+      AutomaticStopTimeMinutes: 30
+      OwnerArn: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+      ConnectionSettings:
+        IdleTimeoutMinutes: 30
+      # Repositories:
+      #   - RepositoryUrl: "https://github.com/your/repo.git"  # プロジェクトのGitHubリポジトリなど
+
+      # SecurityGroupIds:
+      #   - !Ref MySecurityGroup
+
+  # MySecurityGroup:
+  #   Type: AWS::EC2::SecurityGroup
+  #   Properties:
+  #     GroupDescription: "Cloud9 security group"
+  #     VpcId: !Ref MyVPC
+  #     SecurityGroupIngress:
+  #       - IpProtocol: tcp
+  #         FromPort: 0
+  #         ToPort: 65535
+  #         CidrIp: 0.0.0.0/0
