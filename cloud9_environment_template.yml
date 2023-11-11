@@ -68,9 +68,9 @@ Resources:
       InstanceType: "t2.micro"
       SubnetId: !Ref MySubnet
       AutomaticStopTimeMinutes: 30
-      OwnerArn: !Sub "arn:aws:iam::${AWS::AccountId}:root"
-      ConnectionSettings:
-        IdleTimeoutMinutes: 30
+      OwnerArn: !Sub "arn:aws:iam::${AWS::AccountId}:user/tonkatu"
+      # ConnectionSettings:
+      #   IdleTimeoutMinutes: 30
       # Repositories:
       #   - RepositoryUrl: "https://github.com/your/repo.git"  # プロジェクトのGitHubリポジトリなど
 
