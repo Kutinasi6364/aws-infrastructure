@@ -15,15 +15,25 @@ Resources:
         - Key: Name
           Value: !Ref EnvironmentName
 
-  MySubnet: # サブネットの作成
+  MySubnet1: # サブネットの作成
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref MyVPC
-      CidrBlock: "10.0.0.0/24"
+      CidrBlock: "10.0.1.0/24"
       AvailabilityZone: !Select [ 0, !GetAZs ]
       Tags:
         - Key: Name
-          Value: !Ref EnvironmentName
+          Value: !Sub ${EnvironmentName}-subnet1
+  
+  MySubnet2: # サブネットの作成
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      CidrBlock: "10.0.2.0/24"
+      AvailabilityZone: !Select [ 0, !GetAZs ]
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-subnet2
     
   MyVPCIGW: # Internet Gatewayの作成
     Type: AWS::EC2::InternetGateway
@@ -54,10 +64,16 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref MyVPCIGW
 
-  SubnetRouteAssociation: # サブネットとルートテーブルの関連付け
+  Subnet1RouteAssociation: # サブネットとルートテーブルの関連付け
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      SubnetId: !Ref MySubnet
+      SubnetId: !Ref MySubnet1
+      RouteTableId: !Ref Cloud9RouteTable
+  
+  Subnet2RouteAssociation: # サブネットとルートテーブルの関連付け
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref MySubnet2
       RouteTableId: !Ref Cloud9RouteTable
 
   MyCloud9Environment: # Cloud9環境の作成
@@ -66,25 +82,7 @@ Resources:
       Name: !Ref EnvironmentName
       Description: "My Cloud9 Environment"
       ImageId: "amazonlinux-2023-x86_64"
-      InstanceType: "t2.micro"
-      SubnetId: !Ref MySubnet
+      InstanceType: "t3.small"
+      SubnetId: !Ref MySubnet1
       AutomaticStopTimeMinutes: 30
       OwnerArn: !Sub "arn:aws:iam::${AWS::AccountId}:user/tonkatu"
-      # ConnectionSettings:
-      #   IdleTimeoutMinutes: 30
-      # Repositories:
-      #   - RepositoryUrl: "https://github.com/your/repo.git"  # プロジェクトのGitHubリポジトリなど
-
-      # SecurityGroupIds:
-      #   - !Ref MySecurityGroup
-
-  # MySecurityGroup:
-  #   Type: AWS::EC2::SecurityGroup
-  #   Properties:
-  #     GroupDescription: "Cloud9 security group"
-  #     VpcId: !Ref MyVPC
-  #     SecurityGroupIngress:
-  #       - IpProtocol: tcp
-  #         FromPort: 0
-  #         ToPort: 65535
-  #         CidrIp: 0.0.0.0/0
