@@ -27,6 +27,7 @@ Parameters:
     Default: 10.0.3.0/24
 
 
+# VPC
 Resources:
   VPC:
     Type: AWS::EC2::VPC
@@ -52,6 +53,7 @@ Resources:
       VpcId: !Ref VPC
 
 
+# Subnet
   PublicSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
@@ -97,6 +99,7 @@ Resources:
           Value: !Sub ${EnvironmentName} Private Subnet(AZ2)
 
 
+# VPC Route
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
@@ -155,6 +158,7 @@ Resources:
       SubnetId: !Ref PrivateSubnet2
 
 
+# EC2
   EC2Instance:
     Type: AWS::EC2::Instance
     Properties:
@@ -167,7 +171,7 @@ Resources:
           DeviceIndex: 0
           SubnetId: !Ref PublicSubnet1
           GroupSet:
-            - !Ref webuser1
+            - !Ref EC2InstanceSecurityGroup
       UserData:
         Fn::Base64: |
           #!/bin/bash
@@ -185,7 +189,7 @@ Resources:
         - Key: Name
           Value: webserver1
 
-  webuser1:
+  EC2InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupName: web-user1
@@ -200,3 +204,46 @@ Resources:
           FromPort: 22
           ToPort: 22
           CidrIp: 0.0.0.0/0
+
+
+# RDS
+  RDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: db-user1
+      GroupDescription: Allow MYSQL/Aurora
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          SourceSecurityGroupId: !Ref EC2InstanceSecurityGroup
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+
+  RDSSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for RDS
+      DBSubnetGroupName: db-subnet-user1
+      SubnetIds: 
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+
+  RDSInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: rds-user1
+      DBName: rdsuser1
+      MasterUsername: admin
+      MasterUserPassword: password
+      EngineVersion: 8.0
+      DBInstanceClass: db.t3.micro
+      DBSubnetGroupName: !Ref RDSSubnetGroup
+      PubliclyAccessible: false
+      VPCSecurityGroups:
+        - !Ref RDSSecurityGroup
+      AllocatedStorage: 20
+      Engine: MySQL
+      AvailabilityZone: !Select [0, !GetAZs '']
+    DeletionPolicy: Delete
